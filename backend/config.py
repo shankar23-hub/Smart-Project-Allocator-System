@@ -15,8 +15,8 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 class Config:
     # Flask/JWT
-    SECRET_KEY = os.environ.get("SECRET_KEY", "spa-secret-key-change-me")
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "spa-jwt-secret-change-me")
+    SECRET_KEY = os.environ.get("SECRET_KEY", "spa-secret-key-change-me-32-bytes-minimum")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "spa-jwt-secret-change-me-32-bytes-minimum")
     DEBUG = _env_bool("DEBUG", False)
 
     # MongoDB Atlas

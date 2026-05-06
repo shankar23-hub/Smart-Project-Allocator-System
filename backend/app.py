@@ -52,8 +52,23 @@ def ensure_default_admin() -> None:
         return
     existing = db.users.find_one({"$or": [{"email": email}, {"username": username}]})
     if existing:
-        db.users.update_one({"_id": existing["_id"]}, {"$set": {"name": existing.get("name") or name, "username": existing.get("username") or username, "email": existing.get("email") or email, "role": "admin", "dept": existing.get("dept") or "Management", "isActive": True}})
-        print(f"[ADMIN] Existing admin verified: {email} / username: {username}")
+        # Important fix:
+        # If the admin already exists, keep the same account but reset its password
+        # from ADMIN_PASSWORD. Without this, MongoDB may keep an old passwordHash,
+        # and /api/auth/login will always return 401 even when .env is correct.
+        db.users.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {
+                "name": existing.get("name") or name,
+                "username": username,
+                "email": email,
+                "passwordHash": generate_password_hash(password),
+                "role": "admin",
+                "dept": existing.get("dept") or "Management",
+                "isActive": True,
+            }},
+        )
+        print(f"[ADMIN] Existing admin password reset and verified: {email} / username: {username}")
         return
     new_id = get_next_id("users")
     db.users.insert_one({"id": new_id, "name": name, "username": username, "email": email, "passwordHash": generate_password_hash(password), "role": "admin", "dept": "Management", "isActive": True})
