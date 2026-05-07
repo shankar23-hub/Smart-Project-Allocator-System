@@ -86,11 +86,11 @@ def create_app():
     # Add your live frontend URL in Vercel as FRONTEND_URL.
     frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
     cors_origins = [
-        "https://smart-project-allocator-system-dj2j.vercel.app/", "http://127.0.0.1:5173",
-        "https://smart-project-allocator-system-dj2j.vercel.app/", "http://127.0.0.1:5174",
-        "https://smart-project-allocator-system-dj2j.vercel.app/", "http://127.0.0.1:5175",
-        "https://smart-project-allocator-system-dj2j.vercel.app/", "http://127.0.0.1:4173",
-        "https://smart-project-allocator-system-dj2j.vercel.app/", "http://127.0.0.1:3000",
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:5174", "http://127.0.0.1:5174",
+        "http://localhost:5175", "http://127.0.0.1:5175",
+        "http://localhost:4173", "http://127.0.0.1:4173",
+        "http://localhost:3000", "http://127.0.0.1:3000",
     ]
     if frontend_url:
         cors_origins.append(frontend_url)
@@ -305,5 +305,5 @@ app = create_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    print(f"\n🚀 SPA Admin Portal API running on https://smart-project-allocator-system-dj2j.vercel.app/:{port}")
+    print(f"\n🚀 SPA Admin Portal API running on http://localhost:{port}")
     app.run(host="0.0.0.0", port=port, debug=Config.DEBUG)
