@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
+import { authAPI } from '../utils/api'
 
 const AVATAR_COLORS = ['#7c5cff','#38bdf8','#22c55e','#f59e0b','#ef4d6a','#a855f7']
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-
 function getToken() {
   try { return localStorage.getItem('spa_token') || '' } catch { return '' }
 }
@@ -35,31 +34,29 @@ export default function MyProfile({ user }) {
   }
 
   // Load profile from API on mount
-  useEffect(()=>{
+  useEffect(() => {
     const token = getToken()
     if (!token) return
-    fetch(`${API}/api/auth/me`, {
-      headers: { Authorization:`Bearer ${token}` }
-    })
-    .then(r=>r.ok?r.json():null)
-    .then(data=>{
-      if (data) {
-        setForm(f=>({
-          ...f,
-          name:    data.name    || f.name,
-          email:   data.email   || f.email,
-          role:    data.role    || f.role,
-          dept:    data.dept    || f.dept,
-          mobile:  data.mobile  || f.mobile,
-          dob:     data.dob     || f.dob,
-          doj:     data.doj     || f.doj,
-          address: data.address || f.address,
-          bio:     data.bio     || f.bio,
-        }))
-      }
-    })
-    .catch(()=>{})
-  },[])
+
+    authAPI.getSessionUser()
+      .then(data => {
+        if (data) {
+          setForm(f => ({
+            ...f,
+            name: data.name || f.name,
+            email: data.email || f.email,
+            role: data.role || f.role,
+            dept: data.dept || f.dept,
+            mobile: data.mobile || f.mobile,
+            dob: data.dob || f.dob,
+            doj: data.doj || f.doj,
+            address: data.address || f.address,
+            bio: data.bio || f.bio,
+          }))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
   const setPw = (k,v) => setPwForm(f=>({...f,[k]:v}))
@@ -73,36 +70,18 @@ export default function MyProfile({ user }) {
     }
     setSaving(true)
     try {
-      const token = getToken()
-      // Try to persist to backend
-      const res = await fetch(`${API}/api/auth/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-        body: JSON.stringify(form)
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        // Also update localStorage cache
-        try {
-          const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
-          localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
-        } catch {}
-        showToast('✅ Profile saved successfully!')
-      } else {
-        // Save locally even if backend endpoint not found
-        try {
-          const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
-          localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
-        } catch {}
-        showToast('✅ Profile saved locally!')
-      }
-    } catch {
-      // Offline fallback — save to localStorage
+      await authAPI.updateProfile(form)
       try {
         const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
         localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
       } catch {}
-      showToast('✅ Profile saved locally (offline mode)!')
+      showToast('✅ Profile saved successfully!')
+    } catch (err) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
+        localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
+      } catch {}
+      showToast(err?.message || 'Profile saved locally because backend is unavailable', 'error')
     }
     setEditing(false)
     setSaving(false)
@@ -118,21 +97,11 @@ export default function MyProfile({ user }) {
     if (pwForm.next !== pwForm.confirm) { showToast('New passwords do not match','error'); return }
     setPwSaving(true)
     try {
-      const token = getToken()
-      const res = await fetch(`${API}/api/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        showToast('🔐 Password updated successfully!')
-        setPwForm({ current:'', next:'', confirm:'' })
-      } else {
-        showToast(data.message || 'Password change failed','error')
-      }
-    } catch {
-      showToast('Could not connect to server','error')
+      await authAPI.changePassword({ currentPassword: pwForm.current, newPassword: pwForm.next })
+      showToast('🔐 Password updated successfully!')
+      setPwForm({ current:'', next:'', confirm:'' })
+    } catch (err) {
+      showToast(err?.message || 'Could not connect to server', 'error')
     }
     setPwSaving(false)
   }

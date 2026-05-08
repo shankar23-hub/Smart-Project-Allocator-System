@@ -126,7 +126,6 @@ function ProceedModal({ results, projectName, skills, onClose }) {
   const [saveLog, setSaveLog] = useState([])
   const navigate = useNavigate()
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
   const overview = {
     name: projectName || 'AI-Allocated Project',
@@ -195,11 +194,8 @@ function ProceedModal({ results, projectName, skills, onClose }) {
       setSaveStatus('notifying')
       setSaveLog(l => [...l, '📧 Sending PDF notifications to team members...'])
 
-      const token = localStorage.getItem('spa_token') || ''
-      const notifyRes = await fetch(`${API_URL}/api/allocation/send-project-notifications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+      try {
+        const notifyData = await allocationAPI.sendProjectNotifications({
           projectId: created?.id,
           projectName: overview.name,
           description: overview.description,
@@ -210,11 +206,8 @@ function ProceedModal({ results, projectName, skills, onClose }) {
           endDate: payload.endDate,
           milestones, tasks,
           lead, teamMembers,
-        }),
-      })
+        })
 
-      if (notifyRes.ok) {
-        const notifyData = await notifyRes.json()
         const notified = notifyData.notified || []
         const emailsSent = notifyData.emailsSent || 0
         setSaveLog(l => [
@@ -224,8 +217,8 @@ function ProceedModal({ results, projectName, skills, onClose }) {
             ? `📩 PDF emailed to ${emailsSent} member(s)`
             : `ℹ️ Email not sent (configure SMTP in backend .env to enable)`,
         ])
-      } else {
-        setSaveLog(l => [...l, '⚠️ Notification delivery had issues (project still saved)'])
+      } catch (notifyErr) {
+        setSaveLog(l => [...l, `⚠️ Notification delivery had issues: ${notifyErr.message || 'project still saved'}`])
       }
 
       setSaveStatus('done')
