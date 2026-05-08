@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { allocationAPI, pdfAPI, projectAPI } from '../utils/api'
+import { allocationAPI, pdfAPI, projectAPI, BASE_URL } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import './ProjectAIAllocation.css'
 
@@ -126,6 +126,7 @@ function ProceedModal({ results, projectName, skills, onClose }) {
   const [saveLog, setSaveLog] = useState([])
   const navigate = useNavigate()
 
+  const API_URL = BASE_URL
 
   const overview = {
     name: projectName || 'AI-Allocated Project',
@@ -194,8 +195,11 @@ function ProceedModal({ results, projectName, skills, onClose }) {
       setSaveStatus('notifying')
       setSaveLog(l => [...l, '📧 Sending PDF notifications to team members...'])
 
-      try {
-        const notifyData = await allocationAPI.sendProjectNotifications({
+      const token = localStorage.getItem('spa_token') || ''
+      const notifyRes = await fetch(`${API_URL}/api/allocation/send-project-notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
           projectId: created?.id,
           projectName: overview.name,
           description: overview.description,
@@ -206,8 +210,11 @@ function ProceedModal({ results, projectName, skills, onClose }) {
           endDate: payload.endDate,
           milestones, tasks,
           lead, teamMembers,
-        })
+        }),
+      })
 
+      if (notifyRes.ok) {
+        const notifyData = await notifyRes.json()
         const notified = notifyData.notified || []
         const emailsSent = notifyData.emailsSent || 0
         setSaveLog(l => [
@@ -217,8 +224,8 @@ function ProceedModal({ results, projectName, skills, onClose }) {
             ? `📩 PDF emailed to ${emailsSent} member(s)`
             : `ℹ️ Email not sent (configure SMTP in backend .env to enable)`,
         ])
-      } catch (notifyErr) {
-        setSaveLog(l => [...l, `⚠️ Notification delivery had issues: ${notifyErr.message || 'project still saved'}`])
+      } else {
+        setSaveLog(l => [...l, '⚠️ Notification delivery had issues (project still saved)'])
       }
 
       setSaveStatus('done')

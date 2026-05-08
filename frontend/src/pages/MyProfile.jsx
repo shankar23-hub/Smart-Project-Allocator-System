@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react'
 import { authAPI } from '../utils/api'
 
 const AVATAR_COLORS = ['#7c5cff','#38bdf8','#22c55e','#f59e0b','#ef4d6a','#a855f7']
-function getToken() {
-  try { return localStorage.getItem('spa_token') || '' } catch { return '' }
-}
-
 export default function MyProfile({ user }) {
   const [editing, setEditing]     = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
@@ -34,29 +30,26 @@ export default function MyProfile({ user }) {
   }
 
   // Load profile from API on mount
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-
+  useEffect(()=>{
     authAPI.getSessionUser()
-      .then(data => {
+      .then(data=>{
         if (data) {
-          setForm(f => ({
+          setForm(f=>({
             ...f,
-            name: data.name || f.name,
-            email: data.email || f.email,
-            role: data.role || f.role,
-            dept: data.dept || f.dept,
-            mobile: data.mobile || f.mobile,
-            dob: data.dob || f.dob,
-            doj: data.doj || f.doj,
+            name:    data.name    || f.name,
+            email:   data.email   || f.email,
+            role:    data.role    || f.role,
+            dept:    data.dept    || f.dept,
+            mobile:  data.mobile  || f.mobile,
+            dob:     data.dob     || f.dob,
+            doj:     data.doj     || f.doj,
             address: data.address || f.address,
-            bio: data.bio || f.bio,
+            bio:     data.bio     || f.bio,
           }))
         }
       })
-      .catch(() => {})
-  }, [])
+      .catch(()=>{})
+  },[])
 
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
   const setPw = (k,v) => setPwForm(f=>({...f,[k]:v}))
@@ -70,10 +63,10 @@ export default function MyProfile({ user }) {
     }
     setSaving(true)
     try {
-      await authAPI.updateProfile(form)
+      const updated = await authAPI.updateProfile(form)
       try {
         const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
-        localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
+        localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...updated }))
       } catch {}
       showToast('✅ Profile saved successfully!')
     } catch (err) {
@@ -81,7 +74,7 @@ export default function MyProfile({ user }) {
         const cached = JSON.parse(localStorage.getItem('spa_user') || '{}')
         localStorage.setItem('spa_user', JSON.stringify({ ...cached, ...form }))
       } catch {}
-      showToast(err?.message || 'Profile saved locally because backend is unavailable', 'error')
+      showToast(err.message || 'Profile saved locally only', 'error')
     }
     setEditing(false)
     setSaving(false)
@@ -101,7 +94,7 @@ export default function MyProfile({ user }) {
       showToast('🔐 Password updated successfully!')
       setPwForm({ current:'', next:'', confirm:'' })
     } catch (err) {
-      showToast(err?.message || 'Could not connect to server', 'error')
+      showToast(err.message || 'Could not connect to server','error')
     }
     setPwSaving(false)
   }

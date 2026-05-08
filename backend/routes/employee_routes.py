@@ -29,7 +29,7 @@ def get_one(employee_id):
 @employee_bp.route("", methods=["POST"])
 @jwt_required()
 def create():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     if not data or not data.get("name") or not data.get("email"):
         return jsonify({"message": "name and email are required"}), 400
     emp = EmployeeModel.create(data)
@@ -39,7 +39,7 @@ def create():
 @employee_bp.route("/<int:employee_id>", methods=["PUT"])
 @jwt_required()
 def update(employee_id):
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     emp  = EmployeeModel.update(employee_id, data)
     if not emp:
         return jsonify({"message": "Employee not found"}), 404

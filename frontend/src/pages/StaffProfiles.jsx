@@ -6,6 +6,48 @@ import './StaffProfiles.css'
 const DEPARTMENTS = ['Engineering', 'Design', 'HR', 'Finance', 'Marketing', 'Operations', 'Sales', 'Support']
 const ROLES = ['Software Engineer', 'Senior Developer', 'UI/UX Designer', 'HR Manager', 'Project Manager', 'Team Lead', 'Business Analyst', 'QA Engineer', 'DevOps Engineer', 'Data Scientist']
 
+const MAX_STAFF_PHOTO_BYTES = 180 * 1024;
+
+function resizeStaffPhoto(file, maxSize = 320, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      reject(new Error('Please select a valid image file'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('Could not read image file'))
+    reader.onload = () => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('Could not load image file'))
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+        const width = Math.max(1, Math.round(img.width * scale))
+        const height = Math.max(1, Math.round(img.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        let dataUrl = canvas.toDataURL('image/jpeg', quality)
+        if (dataUrl.length > MAX_STAFF_PHOTO_BYTES * 1.37) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.55)
+        }
+        resolve(dataUrl)
+      }
+      img.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+function safePhoto(value) {
+  if (!value || typeof value !== 'string') return ''
+  if (!value.startsWith('data:')) return value
+  return value.length <= MAX_STAFF_PHOTO_BYTES * 1.37 ? value : ''
+}
+
 const EMPTY_FORM = {
   name: '', role: '', email: '', mobile: '', dept: '', dob: '', doj: '',
   father: '', mother: '', address: '',
@@ -38,12 +80,17 @@ function StaffModal({ staff, onClose, onSave }) {
     setForm(f => ({ ...f, state: state?.name || '', stateCode: state?.isoCode || '', city: '' }))
   }
 
-  const handleImage = (e) => {
+  const handleImage = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => set('imagePreview', ev.target.result)
-    reader.readAsDataURL(file)
+    try {
+      const compressed = await resizeStaffPhoto(file)
+      set('imagePreview', compressed)
+    } catch (err) {
+      alert(err.message || 'Could not process image')
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
+    }
   }
 
   const addSkill = () => {
@@ -99,7 +146,7 @@ function StaffModal({ staff, onClose, onSave }) {
                   </button>
                 )}
               </div>
-              <div className="sp-photo-hint">JPG or PNG · Max 5 MB</div>
+              <div className="sp-photo-hint">JPG or PNG · auto-compressed for Vercel</div>
             </div>
           </div>
 
@@ -390,7 +437,7 @@ function normalizeEmp(e) {
     state: e.state || '',
     stateCode: e.stateCode || '',
     city: e.city || '',
-    imagePreview: e.imagePreview || null,
+    imagePreview: safePhoto(e.imagePreview || e.profileImage || '') || null,
     skills: Array.isArray(e.skills) ? e.skills : [],
     skillsInput: '',
     experience: e.experience ?? '',
@@ -445,7 +492,7 @@ export default function StaffProfiles() {
       state: form.state || '',
       stateCode: form.stateCode || '',
       city: form.city || '',
-      imagePreview: form.imagePreview || '',
+      imagePreview: safePhoto(form.imagePreview || ''),
       skills: form.skills || [],
       certifications: form.certifications || [],
       experience: Number(form.experience || 0),

@@ -5,6 +5,15 @@ employee_model.py  –  MongoDB-backed CRUD for the employees collection.
 from datetime import datetime
 from database import get_db, get_next_id
 
+MAX_IMAGE_PREVIEW_CHARS = 260000
+
+def _safe_image_preview(value):
+    if not isinstance(value, str):
+        return ""
+    if value.startswith("data:") and len(value) > MAX_IMAGE_PREVIEW_CHARS:
+        return ""
+    return value
+
 
 def _doc_to_dict(doc: dict | None) -> dict | None:
     if doc is None:
@@ -21,7 +30,7 @@ def _doc_to_dict(doc: dict | None) -> dict | None:
     d.setdefault('country', '')
     d.setdefault('countryCode', '')
     d.setdefault('stateCode', '')
-    d.setdefault('imagePreview', '')
+    d['imagePreview'] = _safe_image_preview(d.get('imagePreview', d.get('profileImage', '')))
     d['skills'] = [str(s).strip() for s in d.get('skills', []) if str(s).strip()]
     try:
         d['experience'] = int(d.get('experience', 0) or 0)
@@ -74,7 +83,7 @@ class EmployeeModel:
             'state': data.get('state', ''),
             'stateCode': data.get('stateCode', ''),
             'city': data.get('city', ''),
-            'imagePreview': data.get('imagePreview', ''),
+            'imagePreview': _safe_image_preview(data.get('imagePreview', data.get('profileImage', ''))),
             'createdAt': now,
         }
         db.employees.insert_one(doc)
@@ -111,7 +120,7 @@ class EmployeeModel:
             'state': merged.get('state', ''),
             'stateCode': merged.get('stateCode', ''),
             'city': merged.get('city', ''),
-            'imagePreview': merged.get('imagePreview', ''),
+            'imagePreview': _safe_image_preview(merged.get('imagePreview', merged.get('profileImage', ''))),
         }
         db = get_db()
         db.employees.update_one({'id': int(employee_id)}, {'$set': update_doc})

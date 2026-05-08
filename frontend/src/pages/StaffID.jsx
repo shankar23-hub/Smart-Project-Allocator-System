@@ -160,7 +160,7 @@ export default function StaffID() {
   }
 
   const copyAll = () => {
-    copy(`Name: ${selected?.name}\nEmployee ID: ${empId}\nEmail: ${creds.email}\nPassword: ${creds.password}\nPortal: http://localhost:5174`, 'All')
+    copy(`Name: ${selected?.name}\nEmployee ID: ${empId}\nEmail: ${creds.email}\nPassword: ${creds.password}\nPortal: https://smart-project-allocator-system-d2j.vercel.app`, 'All')
   }
 
   return (
@@ -279,7 +279,7 @@ export default function StaffID() {
                     { label:'Email',       value: creds.email,         icon:'📧' },
                     { label:'Password',    value: creds.password,      icon:'🔑' },
                     { label:'Employee ID', value: empId,               icon:'🪪' },
-                    { label:'Portal URL',  value: 'http://localhost:5174', icon:'🔗' },
+                    { label:'Portal URL',  value: 'https://smart-project-allocator-system-d2j.vercel.app', icon:'🔗' },
                   ].map(item => (
                     <div key={item.label} style={{ display:'flex', alignItems:'center', gap:10,
                       padding:'9px 12px', background:'var(--bg3)', borderRadius:10,
@@ -310,7 +310,7 @@ export default function StaffID() {
                   borderRadius:11, border:'1px solid rgba(0,200,150,0.2)', fontSize:12, color:'#00c896',
                   lineHeight:1.5 }}>
                   ✅ <strong>Employee Portal login created.</strong> The employee can log in at{' '}
-                  <strong>http://localhost:5174</strong> using these credentials.
+                  <strong>https://smart-project-allocator-system-d2j.vercel.app</strong> using these credentials.
                 </div>
               </div>
             </div>
