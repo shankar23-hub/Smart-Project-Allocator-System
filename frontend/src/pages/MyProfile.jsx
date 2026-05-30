@@ -3,12 +3,53 @@ import { authAPI } from '../utils/api'
 
 const AVATAR_COLORS = ['#7c5cff', '#38bdf8', '#22c55e', '#f59e0b', '#ef4d6a', '#a855f7']
 
+// Eye icons as inline SVG components
+const EyeOpenIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const EyeClosedIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+)
+
 export default function MyProfile({ user }) {
   const [editing, setEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
   const [saving, setSaving] = useState(false)
   const [pwSaving, setPwSaving] = useState(false)
   const [toast, setToast] = useState(null)
+
+  // Password visibility state for each field
+  const [showPw, setShowPw] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  })
 
   const [form, setForm] = useState({
     name: user?.name || 'Admin User',
@@ -67,6 +108,13 @@ export default function MyProfile({ user }) {
     setPwForm((f) => ({
       ...f,
       [key]: value,
+    }))
+  }
+
+  const toggleShowPw = (field) => {
+    setShowPw((prev) => ({
+      ...prev,
+      [field]: !prev[field],
     }))
   }
 
@@ -141,6 +189,8 @@ export default function MyProfile({ user }) {
         next: '',
         confirm: '',
       })
+      // Reset visibility states after successful password change
+      setShowPw({ current: false, next: false, confirm: false })
     } catch (err) {
       showToast(err.message || 'Could not connect to server', 'error')
     }
@@ -156,6 +206,71 @@ export default function MyProfile({ user }) {
     { action: 'Ran AI Allocation for SPA Mobile App', time: '3 days ago', icon: '🤖' },
     { action: 'Changed portal settings', time: '1 week ago', icon: '⚙️' },
   ]
+
+  // Reusable password input with eye toggle
+  const PasswordInput = ({ field, label, placeholder, showValidation }) => (
+    <div className="form-group">
+      <label className="form-label">{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          className="form-control"
+          type={showPw[field] ? 'text' : 'password'}
+          value={pwForm[field]}
+          onChange={(e) => setPw(field, e.target.value)}
+          placeholder={placeholder}
+          style={{ paddingRight: 42 }}
+        />
+        <button
+          type="button"
+          onClick={() => toggleShowPw(field)}
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: showPw[field] ? 'var(--primary)' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 4,
+            borderRadius: 6,
+            transition: 'color 0.2s',
+            lineHeight: 0,
+          }}
+          aria-label={showPw[field] ? `Hide ${label}` : `Show ${label}`}
+          title={showPw[field] ? 'Hide password' : 'Show password'}
+        >
+          {showPw[field] ? <EyeClosedIcon /> : <EyeOpenIcon />}
+        </button>
+      </div>
+
+      {/* Validation messages for New Password */}
+      {showValidation === 'new' && pwForm.next && pwForm.next.length < 6 && (
+        <div style={{ fontSize: 11, color: '#ef4d6a', marginTop: 4 }}>
+          Password must be at least 6 characters
+        </div>
+      )}
+
+      {/* Validation messages for Confirm Password */}
+      {showValidation === 'confirm' && pwForm.confirm && pwForm.next !== pwForm.confirm && (
+        <div style={{ fontSize: 11, color: '#ef4d6a', marginTop: 4 }}>
+          Passwords do not match
+        </div>
+      )}
+
+      {showValidation === 'confirm' &&
+        pwForm.confirm &&
+        pwForm.next === pwForm.confirm &&
+        pwForm.confirm.length >= 6 && (
+          <div style={{ fontSize: 11, color: '#06d6a0', marginTop: 4 }}>
+            ✓ Passwords match
+          </div>
+        )}
+    </div>
+  )
 
   return (
     <div>
@@ -316,33 +431,18 @@ export default function MyProfile({ user }) {
                 flexWrap: 'wrap',
               }}
             >
-              <span
-                style={{
-                  fontSize: 13,
-                  color: 'var(--text-muted)',
-                }}
-              >
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 📧 {form.email}
               </span>
 
               {form.mobile && (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text-muted)',
-                  }}
-                >
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                   📱 {form.mobile}
                 </span>
               )}
 
               {form.doj && (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text-muted)',
-                  }}
-                >
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                   📅 Joined {form.doj}
                 </span>
               )}
@@ -363,18 +463,12 @@ export default function MyProfile({ user }) {
             )}
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-            }}
-          >
+          <div style={{ display: 'flex', gap: 8 }}>
             {editing ? (
               <>
                 <button className="btn btn-outline btn-sm" onClick={handleCancelEdit}>
                   Cancel
                 </button>
-
                 <button
                   className="btn btn-primary btn-sm"
                   disabled={saving}
@@ -534,10 +628,7 @@ export default function MyProfile({ user }) {
               onChange={(e) => set('bio', e.target.value)}
               disabled={!editing}
               rows={3}
-              style={{
-                resize: 'vertical',
-                opacity: editing ? 1 : 0.7,
-              }}
+              style={{ resize: 'vertical', opacity: editing ? 1 : 0.7 }}
             />
           </div>
 
@@ -558,7 +649,6 @@ export default function MyProfile({ user }) {
               >
                 Cancel
               </button>
-
               <button
                 className="btn btn-primary"
                 disabled={saving}
@@ -588,76 +678,28 @@ export default function MyProfile({ user }) {
           </div>
 
           <div style={{ maxWidth: 420 }}>
-            <div className="form-group">
-              <label className="form-label">Current Password *</label>
-              <input
-                className="form-control"
-                type="password"
-                value={pwForm.current}
-                onChange={(e) => setPw('current', e.target.value)}
-                placeholder="Enter current password"
-              />
-            </div>
+            {/* Current Password */}
+            <PasswordInput
+              field="current"
+              label="Current Password *"
+              placeholder="Enter current password"
+            />
 
-            <div className="form-group">
-              <label className="form-label">New Password *</label>
-              <input
-                className="form-control"
-                type="password"
-                value={pwForm.next}
-                onChange={(e) => setPw('next', e.target.value)}
-                placeholder="At least 6 characters"
-              />
+            {/* New Password */}
+            <PasswordInput
+              field="next"
+              label="New Password *"
+              placeholder="At least 6 characters"
+              showValidation="new"
+            />
 
-              {pwForm.next && pwForm.next.length < 6 && (
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#ef4d6a',
-                    marginTop: 4,
-                  }}
-                >
-                  Password must be at least 6 characters
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Confirm New Password *</label>
-              <input
-                className="form-control"
-                type="password"
-                value={pwForm.confirm}
-                onChange={(e) => setPw('confirm', e.target.value)}
-                placeholder="Re-enter new password"
-              />
-
-              {pwForm.confirm && pwForm.next !== pwForm.confirm && (
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#ef4d6a',
-                    marginTop: 4,
-                  }}
-                >
-                  Passwords do not match
-                </div>
-              )}
-
-              {pwForm.confirm &&
-                pwForm.next === pwForm.confirm &&
-                pwForm.confirm.length >= 6 && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: '#06d6a0',
-                      marginTop: 4,
-                    }}
-                  >
-                    ✓ Passwords match
-                  </div>
-                )}
-            </div>
+            {/* Confirm Password */}
+            <PasswordInput
+              field="confirm"
+              label="Confirm New Password *"
+              placeholder="Re-enter new password"
+              showValidation="confirm"
+            />
 
             <button
               className="btn btn-primary"
@@ -720,13 +762,7 @@ export default function MyProfile({ user }) {
             Recent Activity Log
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {activityLog.map((activity, index) => (
               <div
                 key={index}
@@ -755,18 +791,11 @@ export default function MyProfile({ user }) {
                 >
                   {activity.icon}
                 </div>
-
                 <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: 500,
-                    }}
-                  >
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>
                     {activity.action}
                   </div>
                 </div>
-
                 <div
                   style={{
                     fontSize: 12,
@@ -784,14 +813,8 @@ export default function MyProfile({ user }) {
 
       <style>{`
         @keyframes _toastIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

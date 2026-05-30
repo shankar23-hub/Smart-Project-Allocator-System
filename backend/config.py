@@ -22,7 +22,10 @@ class Config:
     # MongoDB Atlas
     # Example:
     # mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/spa_admin?retryWrites=true&w=majority&appName=SPA-ADMIN
-    MONGO_URI = os.environ.get("MONGO_URI", "").strip()
+    MONGO_URI = os.environ.get(
+        "MONGO_URI",
+        "mongodb+srv://spa_admin:SpaAdmin%402007@cluster0.swvlcma.mongodb.net/spa_admin_db?retryWrites=true&w=majority&appName=Cluster0",
+    ).strip()
     MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "spa_admin_db").strip() or "spa_admin_db"
 
     # Frontend URL used by CORS
