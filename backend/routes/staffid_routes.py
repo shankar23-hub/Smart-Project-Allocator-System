@@ -1,33 +1,42 @@
 """
 staffid_routes.py – Staff ID generation and Employee Portal credential management.
+
+FIX: Staff ID format changed to SPA10001 (sequential, no dept code).
+FIX: Password format changed to SPA@10001 (matches Staff ID number).
+FIX: employee_portal_users now stores staffId field (not only email).
+FIX: Index added on staffId for fast login lookup.
 """
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from database import get_db, get_next_id
 from werkzeug.security import generate_password_hash
-import random, string
 
 staffid_bp = Blueprint("staffid", __name__, url_prefix="/api/staff-id")
 
 
-def _generate_emp_id(employee_id: int, department: str) -> str:
-    dept_code = (department or "GEN").replace(" ", "")[:3].upper()
-    return f"NXA-{dept_code}-{str(employee_id).zfill(3)}"
+def _get_next_staff_number(db) -> int:
+    """Atomically increment and return the next SPA staff number (starts at 10001)."""
+    result = db.counters.find_one_and_update(
+        {"_id": "staff_ids"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    seq = int(result["seq"])
+    # First ever call returns 1 → map to 10001
+    return seq + 10000
 
 
-def _generate_email(name: str) -> str:
-    parts = name.lower().split()
-    first = parts[0] if parts else "emp"
-    last = parts[-1] if len(parts) > 1 else ""
-    return f"{first}.{last}@spa.com" if last else f"{first}@spa.com"
+def _generate_staff_id(staff_num: int) -> str:
+    """Generate Staff ID in format SPA10001."""
+    return f"SPA{staff_num}"
 
 
-def _generate_password(name: str, emp_id: str) -> str:
-    base = name.split()[0].capitalize()
-    suffix = emp_id[-3:]
-    special = random.choice(["@", "#", "$", "!"])
-    return f"{base}{suffix}{special}"
+def _generate_staff_password(staff_id: str) -> str:
+    """Generate password in format SPA@10001 (SPA@ + numeric part of staff ID)."""
+    numeric_part = staff_id[3:]  # strip 'SPA' → '10001'
+    return f"SPA@{numeric_part}"
 
 
 @staffid_bp.route("/<int:employee_id>", methods=["GET"])
@@ -53,39 +62,57 @@ def generate():
     if not emp:
         return jsonify({"error": "Employee not found"}), 404
 
-    emp_id_str = _generate_emp_id(int(emp_id_num), emp.get("department", emp.get("dept", "")))
-    email = _generate_email(emp.get("name", ""))
-    password = _generate_password(emp.get("name", ""), emp_id_str)
-
     now = datetime.utcnow().isoformat()
+
+    # Check if credentials already exist for this employee
+    existing = db.staff_ids.find_one({"employeeId": int(emp_id_num)})
+    if existing:
+        # Regenerate: keep the same Staff ID number, update password
+        staff_id = existing.get("staffId") or existing.get("empId", "")
+        # If old format (NXA-...), generate a new SPA-format one
+        if not staff_id.startswith("SPA"):
+            staff_num = _get_next_staff_number(db)
+            staff_id = _generate_staff_id(staff_num)
+    else:
+        staff_num = _get_next_staff_number(db)
+        staff_id = _generate_staff_id(staff_num)
+
+    password = _generate_staff_password(staff_id)
+    hashed_pw = generate_password_hash(password)
+
     cred_doc = {
         "employeeId": int(emp_id_num),
         "employeeName": emp.get("name", ""),
-        "empId": emp_id_str,
-        "email": email,
-        "password": password,
-        "passwordHash": generate_password_hash(password),
+        "staffId": staff_id,
+        # Keep empId as alias for backward compatibility
+        "empId": staff_id,
+        "email": emp.get("email", ""),
+        "name": emp.get("name", ""),
+        "department": emp.get("department", emp.get("dept", "")),
+        "password": password,          # plain – shown once to admin
+        "passwordHash": hashed_pw,
         "generatedAt": now,
         "regeneratedAt": now,
     }
 
-    # Upsert (replace existing if regenerating)
+    # Upsert staff_ids record
     db.staff_ids.update_one(
         {"employeeId": int(emp_id_num)},
         {"$set": cred_doc},
         upsert=True,
     )
 
-    # Also create/update Employee Portal login
-    existing_portal = db.employee_portal_users.find_one({"email": email})
+    # Create / update Employee Portal login account (employee_portal_users)
     portal_doc = {
         "employeeId": int(emp_id_num),
+        "staffId": staff_id,
+        "empId": staff_id,
         "name": emp.get("name", ""),
-        "email": email,
-        "passwordHash": generate_password_hash(password),
+        "email": emp.get("email", ""),
+        "passwordHash": hashed_pw,
         "department": emp.get("department", emp.get("dept", "")),
-        "role": emp.get("role", ""),
-        "empId": emp_id_str,
+        "role": emp.get("role", "employee"),
+        "status": "active",
         "createdAt": now,
     }
     db.employee_portal_users.update_one(
@@ -94,5 +121,14 @@ def generate():
         upsert=True,
     )
 
+    # Ensure staffId index exists for fast login lookups
+    try:
+        db.employee_portal_users.create_index(
+            [("staffId", 1)], unique=True, sparse=True, background=True
+        )
+    except Exception:
+        pass
+
     result = dict(cred_doc)
+    result.pop("passwordHash", None)   # never return the hash
     return jsonify({"success": True, "credentials": result})

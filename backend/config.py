@@ -1,8 +1,13 @@
+"""
+config.py – SPA Admin Portal configuration.
+
+FIX: JWT_SECRET_KEY default is now 'spa_portal_secret' to match the spec.
+     Both portals MUST share the same JWT_SECRET_KEY environment variable.
+"""
+
 import os
 from dotenv import load_dotenv
 
-# Load backend/.env during local development. In Vercel, set these values in
-# Project Settings > Environment Variables and redeploy.
 load_dotenv()
 
 
@@ -14,30 +19,29 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 class Config:
-    # Flask/JWT
+    # Flask / JWT
     SECRET_KEY = os.environ.get("SECRET_KEY", "spa-secret-key-change-me-32-bytes-minimum")
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "spa-jwt-secret-change-me-32-bytes-minimum")
+
+    # IMPORTANT: Both Admin Portal and Employee Portal MUST share this same value.
+    # Set JWT_SECRET_KEY=spa_portal_secret in Vercel for BOTH backend deployments.
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "spa_portal_secret")
+
     DEBUG = _env_bool("DEBUG", False)
 
     # MongoDB Atlas
-    # Example:
-    # mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/spa_admin?retryWrites=true&w=majority&appName=SPA-ADMIN
-    MONGO_URI = os.environ.get(
-        "MONGO_URI",
-        "mongodb+srv://spa_admin:SpaAdmin%402007@cluster0.swvlcma.mongodb.net/spa_admin_db?retryWrites=true&w=majority&appName=Cluster0",
-    ).strip()
+    MONGO_URI = os.environ.get("MONGO_URI", "").strip()
     MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "spa_admin_db").strip() or "spa_admin_db"
 
-    # Frontend URL used by CORS
+    # Frontend CORS
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").strip().rstrip("/")
 
-    # Default admin values for first secure setup. Set these in Vercel.
+    # Default admin credentials (set via Vercel env vars)
     ADMIN_NAME = os.environ.get("ADMIN_NAME", "SPA Main Admin")
     ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
     ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@spa.com")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "SpaAdmin@2007")
 
-    # Email settings are optional
+    # Email (optional)
     SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
     SMTP_USER = os.environ.get("SMTP_USER", "")
